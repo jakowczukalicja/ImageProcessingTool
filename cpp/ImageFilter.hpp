@@ -11,10 +11,10 @@ public:
 
     virtual ~ImageFilter() = default;  //deconstructor
 
-    virtual void process(cv::Mat& image) = 0;
+    virtual void process(cv::Mat& image) = 0; //virtual method
 };
 
-
+//inheritance
 class GrayFilter : public ImageFilter {
 public:
     void process(cv::Mat& image) override {

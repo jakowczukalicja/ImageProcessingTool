@@ -1,0 +1,19 @@
+{
+  "version": 4,
+  "configurations": [
+    {
+      "name": "WSL",
+      "compilerPath": "/usr/bin/g++",
+      "includePath": [
+        "${workspaceFolder}",
+        "/usr/include",
+        "/usr/include/opencv4",
+        "${workspaceFolder}/**"
+      ],
+      "cppStandard": "c++17",
+      "intelliSenseMode": "linux-gcc-x64"
+    }
+  ]
+}
+
+

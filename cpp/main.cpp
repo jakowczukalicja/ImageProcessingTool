@@ -5,11 +5,11 @@
 #include "ImageFileReader.hpp"
 #include "ImageFilter.hpp"
 #include "ImageProcessor.hpp"
+#include "FilterType.hpp"
 
 
 using namespace std;
 using namespace cv;
-
 
 
 
@@ -19,11 +19,11 @@ int main(){
 
     Mat img = ImageFileReader::load(path);
 
-    ImageProcessor im;
+    std::vector<FilterType> k = {FilterType::Rainbowr, FilterType::Heart};
+    ImageProcessor im(k);
 
    
-    im.addFilter("Rainbow");
-    im.addFilter("Rainbow");
+    
     im.process(img);
 
 
