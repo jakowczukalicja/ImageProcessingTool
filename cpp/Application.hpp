@@ -1,76 +1,91 @@
 #pragma once
 #include <vector>
 #include <string>
-#include <memory>
-#include <stdexcept>
+
 #include "ImageFilter.hpp"
 #include "FilterType.hpp"
+#include "ImageFileReader.hpp"
+#include "ImageProcessor.hpp"
+#include "FileLogger.hpp"
 
-class ImageProcessor {
+class Application {
 
 private:
-    std::vector<std::unique_ptr<ImageFilter>> filters; //Polymorphism and smart pointers
 
+    std::string inputPath;
+    std::string outputPath;
+    std::vector<FilterType> filters;
 
-    std::unique_ptr<ImageFilter> createFilter(FilterType name) {
-
-        switch (name){
-            case FilterType::Gray: return std::make_unique<GrayFilter>();
-            case FilterType::Blur: return std::make_unique<BlurFilter>();
-            case FilterType::Edge: return std::make_unique<EdgeFilter>();
-            case FilterType::RoseBlush: return std::make_unique<RoseBlushFilter>();
-            case FilterType::Pink: return std::make_unique<PinkFilter>();
-            case FilterType::Rainbowr: return std::make_unique<RainbowFilter>('r');
-            case FilterType::Rainbowc: return std::make_unique<RainbowFilter>('c');
-            case FilterType::Heart: return std::make_unique<HeartFilter>();
-        }
-
-        throw std::runtime_error("Unknown filter ");
+    void toLowercase(std::string& s){
+        std::transform(s.begin(), s.end(), s.begin(), 
+        [](char c) { return std::tolower(c); } ); //STL
     }
+
+    FilterType parseFilterType(const std::string& s0) {
+        std::string s=s0;
+
+        toLowercase(s);
+
+        if (s == "gray")      return FilterType::Gray;
+        if (s == "blur")      return FilterType::Blur;
+        if (s == "edge")      return FilterType::Edge;
+        if (s == "rose")      return FilterType::RoseBlush;
+        if (s == "pink")      return FilterType::Pink;
+        if (s == "rainbowr")  return FilterType::Rainbowr;
+        if (s == "rainbowc")  return FilterType::Rainbowc;
+        if (s == "heart")     return FilterType::Heart;
+
+        FileLogger::getInstance() << "ERROR: invalid filter type: " + s;
+        throw std::string("Invalid filter type: " + s);
+    }
+    
 
 public:
-    
-    ImageProcessor() = default;
 
-    ImageProcessor(FilterType initialFilter) //constructor (non-empty)
-    {
-        addFilter(initialFilter);
-    
+    Application(int argc, char* argv[]){
+        auto& log = FileLogger::getInstance();
+
+        if (argc < 4) {
+            log << "ERROR: invalid arguments count";
+            throw std::string("Invalid arguments count, Usage: app <input> <output> <filters...>");
+        }
+
+        inputPath = argv[1];
+        outputPath  = argv[2];
+
+        log << "Input path: " + inputPath;
+        log << "Output path: " + outputPath;
+
+        for (int i = 3; i < argc; i++) {
+            filters.push_back(parseFilterType(argv[i]));
+        }
     }
 
-    ImageProcessor(const std::vector<FilterType> initialFilters)
-    {
-    for (auto type : initialFilters) {
-        addFilter(type);
-    }
 
-    }
+    int run(){
 
-    void addFilter(FilterType name) {
-        
-        filters.push_back(createFilter(name));
-    }
+        auto& log = FileLogger::getInstance();
 
+        try {
+            log << "Loading image";
+            cv::Mat img = ImageFileReader::load(inputPath);
+            log << "Image loaded";
 
-    void process(cv::Mat& img) {
-        
-        for (auto& f : filters) {
+            log << "Applying filters";
+            ImageProcessor im(filters);
+            im.process(img);
+            log <<"Filters applied";
 
-            if (img.channels() == 1) {
-                cv::cvtColor(img, img, cv::COLOR_GRAY2BGR);
-            }
-            if (img.type() != CV_8UC3) {
-                img.convertTo(img, CV_8UC3, 255.0);
-            }
+            log << "Saving image";
+            ImageFileReader::save(outputPath, img);
+            log << "Image saved";
 
-            f->process(img);
-
-            if (img.channels() == 1) {
-                cv::cvtColor(img, img, cv::COLOR_GRAY2BGR);
-            }
-            if (img.type() != CV_8UC3) {
-                img.convertTo(img, CV_8UC3);
-            }
+            log << "Processing completed successfully";
+            return 0;
+        }
+        catch (const std::string& err) {
+            log <<"ERROR: "<<  err;
+            throw; 
         }
     }
 };

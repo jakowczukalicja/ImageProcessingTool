@@ -22,6 +22,7 @@ public:
 
     void log(const std::string& msg) {
         file << msg << "\n";
+        file.flush();
     }
 
     FileLogger& operator<<(const std::string& msg) { //operator overloading

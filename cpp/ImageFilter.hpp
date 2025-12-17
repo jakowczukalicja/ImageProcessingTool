@@ -1,8 +1,12 @@
 #pragma once
 
 #include <string>
-#include <bits/stdc++.h>
+#include <vector>
+#include <algorithm>
+#include <cmath>
+#include <cstdlib>
 #include <opencv2/opencv.hpp>
+#include "FileLogger.hpp"
 
 //abstract class
 class ImageFilter {
@@ -19,6 +23,8 @@ class GrayFilter : public ImageFilter {
 public:
     void process(cv::Mat& image) override {
         cv::cvtColor(image, image, cv::COLOR_BGR2GRAY);
+        auto& log = FileLogger::getInstance();
+        log <<"GrayFilter completed";
     }
 };
 
@@ -27,6 +33,8 @@ class BlurFilter : public ImageFilter {
 public:
     void process(cv::Mat& image) override {
         cv::GaussianBlur(image, image, cv::Size(21,21), 5, 0);
+        auto& log = FileLogger::getInstance();
+        log <<"BlurFilter completed";
     }
 };
 
@@ -37,6 +45,8 @@ public:
         cv::Mat imageBlur;
         cv::GaussianBlur(image, imageBlur, cv::Size(3,3), 5, 0);
         cv::Canny(imageBlur, image, 50, 150);
+        auto& log = FileLogger::getInstance();
+        log <<"CannyFilter completed";
     }
 };
 
@@ -75,6 +85,8 @@ public:
         cv::addWeighted(img, 0.85, blur, 0.35, 0, img);
 
         img.convertTo(image, CV_8UC3, 255.0);
+        auto& log = FileLogger::getInstance();
+        log <<"RoseBlushFilter completed";
     }
 };
 
@@ -117,6 +129,8 @@ public:
         cv::addWeighted(img, 0.85, blur, 0.35, 0, img);
 
         img.convertTo(image, CV_8UC3, 255.0);
+        auto& log = FileLogger::getInstance();
+        log <<"PinkFilter completed";
     }
 };
 
@@ -239,6 +253,8 @@ private: //encapsulation :)
 
 
         img.convertTo(image, CV_8UC3, 255.0);
+        auto& log = FileLogger::getInstance();
+        log <<"RainbowFilter completed";
     }
 };
 
@@ -372,5 +388,8 @@ private: //encapsulation
 
 
         img.convertTo(image, CV_8UC3, 255.0);
+
+        auto& log = FileLogger::getInstance();
+        log <<"HeartFilter completed";
     }
 };

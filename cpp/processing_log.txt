@@ -1,0 +1,12 @@
+=== Logger started ===
+Input path: Resources/lambo.png
+Output path: output.jpg
+Loading image
+Image loaded
+Applying filters
+PinkFilter completed
+Filters applied
+Saving image
+Image saved
+Processing completed successfully
+=== Logger ended ===

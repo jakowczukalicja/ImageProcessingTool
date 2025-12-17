@@ -2,9 +2,9 @@
 #include <vector>
 #include <string>
 #include <memory>
-#include <stdexcept>
 #include "ImageFilter.hpp"
 #include "FilterType.hpp"
+#include "FileLogger.hpp"
 
 class ImageProcessor {
 
@@ -24,8 +24,8 @@ private:
             case FilterType::Rainbowc: return std::make_unique<RainbowFilter>('c');
             case FilterType::Heart: return std::make_unique<HeartFilter>();
         }
+        throw std::string("Unknown filter type");
 
-        throw std::runtime_error("Unknown filter ");
     }
 
 public:
@@ -56,6 +56,11 @@ public:
         
         for (auto& f : filters) {
 
+            if (img.empty()) {
+            FileLogger::getInstance() << "ERROR: process() received empty image";
+            throw std::string("Cannot process empty image");
+            }
+
             if (img.channels() == 1) {
                 cv::cvtColor(img, img, cv::COLOR_GRAY2BGR);
             }
@@ -70,6 +75,11 @@ public:
             }
             if (img.type() != CV_8UC3) {
                 img.convertTo(img, CV_8UC3);
+            }
+
+
+            if (img.empty()) {
+            throw std::string("Filter produced empty image");
             }
         }
     }
