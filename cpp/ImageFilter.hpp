@@ -211,7 +211,6 @@ private: //encapsulation :)
                 std::vector<float> colourOfPixel;
 
                 if(k == 'r'){
-                    //tu sie nie wykonuje
                     std::vector<float> other = colour(numOfPixels, y, middles);
                     colourOfPixel.insert(colourOfPixel.end(), other.begin(), other.end());
                 }

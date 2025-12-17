@@ -8,16 +8,11 @@
 #include "FilterType.hpp"
 
 
-using namespace std;
-using namespace cv;
-
-
-
 int main(){
 
-    string path = "Resources/lambo.png";
+    std::string path = "Resources/lambo.png";
 
-    Mat img = ImageFileReader::load(path);
+    cv::Mat img = ImageFileReader::load(path);
 
     std::vector<FilterType> k = {FilterType::Rainbowr, FilterType::Heart};
     ImageProcessor im(k);
