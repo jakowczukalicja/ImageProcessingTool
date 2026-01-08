@@ -1,0 +1,41 @@
+.root-pane {
+    -fx-background-color: #f5f5f5;
+}
+
+.top-toolbar {
+    -fx-background-color: #eaeaea;
+    -fx-padding: 5;
+}
+
+.image-container {
+    -fx-background-color: #ffffff;
+}
+
+.placeholder-label {
+    -fx-text-fill: rgb(128, 128, 128);
+    -fx-font-size: 18px;
+}
+
+.filters-scroll {
+    -fx-background-color: transparent;
+}
+
+.filters-box {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #dddddd;
+    -fx-border-radius: 5;
+    -fx-background-radius: 5;
+}
+
+.filters-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+}
+
+.param-row Label {
+    -fx-font-size: 12px;
+}
+
+.param-row TextField {
+    -fx-pref-width: 55;
+}

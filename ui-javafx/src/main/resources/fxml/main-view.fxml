@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.image.*?>
+<?import javafx.geometry.Insets?>
+
+<BorderPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.project.imagetool.controller.MainController"
+            styleClass="root-pane">
+
+    <!-- Top menu -->
+    <top>
+        <ToolBar styleClass="top-toolbar">
+            <Button text="Load Image" onAction="#onLoadImage"/>
+            <Button text="Process" onAction="#onProcess"/>
+            <Button text="Save" onAction="#onSave"/>
+        </ToolBar>
+    </top>
+
+    <!-- Center: Image preview -->
+    <center>
+        <StackPane styleClass="image-container">
+            <ImageView fx:id="imageView"
+                       fitWidth="500"
+                       fitHeight="500"
+                       preserveRatio="true"/>
+
+            <Label fx:id="placeholderLabel"
+                   text="Load image"
+                   styleClass="placeholder-label"/>
+        </StackPane>
+    </center>
+
+    <!-- Right: Filters -->
+    <right>
+        <ScrollPane fitToWidth="true" styleClass="filters-scroll">
+            <VBox spacing="10" styleClass="filters-box">
+                <padding>
+                    <Insets top="10" right="10" bottom="10" left="10"/>
+                </padding>
+
+                <Label text="Filters" styleClass="filters-title"/>
+
+                <CheckBox fx:id="grayCheckBox" text="Grayscale"/>
+
+                <CheckBox fx:id="blurCheckBox" text="Blur"/>
+                <HBox spacing="5" styleClass="param-row">
+                    <Label text="Kernel"/>
+                    <TextField fx:id="blurKernelField" text="9"/>
+                    <Label text="Sigma"/>
+                    <TextField fx:id="blurSigmaField" text="2.0"/>
+                </HBox>
+
+                <CheckBox fx:id="edgeCheckBox" text="Edge"/>
+                <HBox spacing="5" styleClass="param-row">
+                    <Label text="Low"/>
+                    <TextField fx:id="edgeLowField" text="50"/>
+                    <Label text="High"/>
+                    <TextField fx:id="edgeHighField" text="150"/>
+                </HBox>
+
+                <CheckBox fx:id="rainbowCheckBox" text="Rainbow"/>
+                <ChoiceBox fx:id="rainbowDirectionChoice"/>
+            </VBox>
+        </ScrollPane>
+    </right>
+
+</BorderPane>
