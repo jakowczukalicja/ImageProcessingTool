@@ -5,8 +5,7 @@ enum class FilterType {
     Blur,
     Edge,
     RoseBlush,
-    Pink,
-    Rainbowr,
-    Rainbowc,
+    SingleColourFilter,
+    Rainbow,
     Heart
 };

@@ -4,7 +4,7 @@ Output path: output.jpg
 Loading image
 Image loaded
 Applying filters
-PinkFilter completed
+BlurFilter completed
 Filters applied
 Saving image
 Image saved
