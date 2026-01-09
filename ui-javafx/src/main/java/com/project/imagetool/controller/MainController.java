@@ -16,6 +16,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import javafx.scene.layout.VBox;
+import com.project.imagetool.util.InputFormatters;
+import com.project.imagetool.util.ValidationUtil;
 
 public class MainController {
     @FXML private ImageView imageView;
@@ -65,6 +67,15 @@ public class MainController {
                 logsToggleButton.setText(show ? "Hide Logs" : "Show Logs");
             });
 
+        // Attach numeric formatters
+        try {
+            blurKernelField.setTextFormatter(InputFormatters.createIntegerFormatter());
+            blurSigmaField.setTextFormatter(InputFormatters.createDecimalFormatter());
+            edgeLowField.setTextFormatter(InputFormatters.createDecimalFormatter());
+            edgeHighField.setTextFormatter(InputFormatters.createDecimalFormatter());
+        } catch (Exception ex) {
+            // ignore formatter setup failures
+        }
         }
     }
 
@@ -96,6 +107,20 @@ public class MainController {
             Path inputPath = (tempOutputImage != null && Files.exists(tempOutputImage))
                     ? tempOutputImage
                     : inputImage.toPath();
+
+            // validate parameters before creating temp files
+            if (!ValidationUtil.validateParameters(
+                    (blurCheckBox != null && blurCheckBox.isSelected()),
+                    blurKernelField.getText(),
+                    blurSigmaField.getText(),
+                    (edgeCheckBox != null && edgeCheckBox.isSelected()),
+                    edgeLowField.getText(),
+                    edgeHighField.getText(),
+                    this::showError
+            )) {
+                processBtn.setDisable(false);
+                return;
+            }
 
             try {
                 // delete any older prev copy
