@@ -13,7 +13,6 @@
     <top>
         <ToolBar>
             <Button text="Load Image" onAction="#onLoadImage"/>
-            <Button text="Process" onAction="#onProcess" fx:id="processBtn"/>
             <Button text="Save" onAction="#onSave"/>
         </ToolBar>
     </top>
@@ -73,12 +72,32 @@
                 <ChoiceBox fx:id="rainbowDirectionChoice"/>
 
                 <!-- Single Colour -->
-                <Separator/>
+
                 <Label text="Single Colour Filter" style="-fx-font-size: 14px;"/>
                 <CheckBox fx:id="singleColourCheckBox" text="Apply Single Colour"/>
                 <ColorPicker fx:id="singleColourPicker"/>
+
+                <Separator/>
+                <HBox spacing="6">
+                    <Button text="Revert Image" onAction="#onRevertImage" fx:id="revertImageBtn" disable="true" />
+                    <Button text="Process" onAction="#onProcess" fx:id="processBtn"/>
+                </HBox>
             </VBox>
         </ScrollPane>
     </right>
 
-</BorderPane>
+        <bottom>
+            <VBox spacing="4">
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <ToggleButton fx:id="logsToggleButton" text="Show Logs" />
+                    <Label text="Processing log" />
+                </HBox>
+                <VBox fx:id="logScrollPane" prefHeight="160" visible="false" managed="false">
+                    <children>
+                        <TextArea fx:id="logTextArea" editable="false" wrapText="false" prefRowCount="8" />
+                    </children>
+                </VBox>
+            </VBox>
+        </bottom>
+
+    </BorderPane>

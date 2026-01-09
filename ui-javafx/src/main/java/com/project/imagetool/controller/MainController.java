@@ -14,6 +14,8 @@ import javafx.stage.FileChooser;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import javafx.scene.layout.VBox;
 
 public class MainController {
     @FXML private ImageView imageView;
@@ -28,6 +30,8 @@ public class MainController {
     @FXML private CheckBox singleColourCheckBox;
 
     @FXML private Button processBtn;
+    @FXML private Button revertImageBtn;
+
     @FXML private ColorPicker singleColourPicker;
 
     @FXML private TextField blurKernelField;
@@ -36,15 +40,32 @@ public class MainController {
     private TextField edgeLowField;
     @FXML private TextField edgeHighField;
     @FXML private ChoiceBox<String> rainbowDirectionChoice;
+    @FXML private ToggleButton logsToggleButton;
+    @FXML private VBox logScrollPane;
+    @FXML private TextArea logTextArea;
 
     private File inputImage;
     private Path tempOutputImage;
+    private Path prevOutputImage;
 
     @FXML
     public void initialize() {
         rainbowDirectionChoice.getItems().addAll("Rows", "Columns");
         rainbowDirectionChoice.setValue("Rows");
         singleColourPicker.setValue(Color.WHITE);
+
+        if (logsToggleButton != null && logScrollPane != null && logTextArea != null) {
+            logsToggleButton.setSelected(false);
+            logScrollPane.setVisible(false);
+            logScrollPane.setManaged(false);
+            logsToggleButton.setOnAction(evt -> {
+                boolean show = logsToggleButton.isSelected();
+                logScrollPane.setVisible(show);
+                logScrollPane.setManaged(show);
+                logsToggleButton.setText(show ? "Hide Logs" : "Show Logs");
+            });
+
+        }
     }
 
     @FXML
@@ -73,9 +94,31 @@ public class MainController {
         
         try {
             Path inputPath = (tempOutputImage != null && Files.exists(tempOutputImage))
-                    ? tempOutputImage 
+                    ? tempOutputImage
                     : inputImage.toPath();
-            
+
+            try {
+                // delete any older prev copy
+                if (prevOutputImage != null && Files.exists(prevOutputImage)) {
+                    try { Files.delete(prevOutputImage); } catch (Exception ignore) {}
+                    prevOutputImage = null;
+                }
+
+                if (tempOutputImage != null && Files.exists(tempOutputImage)) {
+                    prevOutputImage = Files.createTempFile("imgtool_prev_", ".png");
+                    Files.copy(tempOutputImage, prevOutputImage, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                    if (revertImageBtn != null) revertImageBtn.setDisable(false);
+                } else if (inputImage != null) {
+                    // copy original input image into prevOutputImage so revert restores original
+                    prevOutputImage = Files.createTempFile("imgtool_prev_", ".png");
+                    Files.copy(inputImage.toPath(), prevOutputImage, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                    if (revertImageBtn != null) revertImageBtn.setDisable(false);
+                }
+            } catch (Exception ex) {
+                System.err.println("Could not create prev temp output: " + ex.getMessage());
+                prevOutputImage = null;
+            }
+
             Path oldOutput = tempOutputImage;
             tempOutputImage = Files.createTempFile("imgtool_", ".png");
 
@@ -150,6 +193,8 @@ public class MainController {
 
                     // Load and display the new processed image
                     imageView.setImage(new Image(tempOutputImage.toUri().toString()));
+                    // Append any new log lines from processing_log.txt to the log view
+                    appendNewLogLines();
                     processBtn.setDisable(false);
                 } catch (Exception ex) {
                     showError("Failed to load processed image: " + ex.getMessage());
@@ -224,6 +269,69 @@ public class MainController {
         }
         
         throw new RuntimeException("Could not find cpp/main executable. Searched from: " + currentDir.toAbsolutePath());
+    }
+
+    private Path findProcessingLogFile() {
+        Path currentDir = Path.of(System.getProperty("user.dir"));
+        Path searchDir = currentDir;
+
+        for (int i = 0; i < 6; i++) {
+            Path p = searchDir.resolve("processing_log.txt");
+            if (Files.exists(p)) {
+                return p.toAbsolutePath();
+            }
+            Path parent = searchDir.getParent();
+            if (parent == null) break;
+            searchDir = parent;
+        }
+        return null;
+    }
+
+    private void appendNewLogLines() {
+        if (logTextArea == null) return;
+        try {
+            Path p = findProcessingLogFile();
+            if (p == null || !Files.exists(p)) return;
+
+            List<String> lines = Files.readAllLines(p);
+            if (!lines.isEmpty()) {
+                StringBuilder sb = new StringBuilder();
+                for (String l : lines) {
+                    String t = l == null ? "" : l.trim();
+                    if ("=== Logger started ===".equals(t) || "=== Logger ended ===".equals(t)) continue;
+                    sb.append(l).append(System.lineSeparator());
+                }
+                logTextArea.appendText(sb.toString());
+            }
+            logTextArea.positionCaret(logTextArea.getLength());
+
+        } catch (Exception ex) {
+            System.err.println("Failed to append processing log lines: " + ex.getMessage());
+        }
+    }
+
+    @FXML
+    private void onRevertImage() {
+        if (prevOutputImage == null || !Files.exists(prevOutputImage)) return;
+        try {
+            // delete current temp output if exists
+            if (tempOutputImage != null && Files.exists(tempOutputImage)) {
+                try { Files.delete(tempOutputImage); } catch (Exception ignore) {}
+            }
+            Path restored = Files.createTempFile("imgtool_restored_", ".png");
+            Files.copy(prevOutputImage, restored, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            // set restored as current tempOutputImage
+            tempOutputImage = restored;
+            // delete prev and clear
+            try { Files.delete(prevOutputImage); } catch (Exception ignore) {}
+            prevOutputImage = null;
+            if (revertImageBtn != null) revertImageBtn.setDisable(true);
+
+            // load into UI
+            imageView.setImage(new Image(tempOutputImage.toUri().toString()));
+        } catch (Exception ex) {
+            System.err.println("Failed to revert image: " + ex.getMessage());
+        }
     }
 
 }
