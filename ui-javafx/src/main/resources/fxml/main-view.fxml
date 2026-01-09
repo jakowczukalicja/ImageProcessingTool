@@ -7,62 +7,76 @@
 
 <BorderPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
-            fx:controller="com.project.imagetool.controller.MainController"
-            styleClass="root-pane">
+            fx:controller="com.project.imagetool.controller.MainController">
 
     <!-- Top menu -->
     <top>
-        <ToolBar styleClass="top-toolbar">
+        <ToolBar>
             <Button text="Load Image" onAction="#onLoadImage"/>
-            <Button text="Process" onAction="#onProcess"/>
+            <Button text="Process" onAction="#onProcess" fx:id="processBtn"/>
             <Button text="Save" onAction="#onSave"/>
         </ToolBar>
     </top>
 
-    <!-- Center: Image preview -->
+    <!-- Left: Image preview -->
     <center>
-        <StackPane styleClass="image-container">
+        <StackPane>
             <ImageView fx:id="imageView"
                        fitWidth="500"
                        fitHeight="500"
                        preserveRatio="true"/>
-
             <Label fx:id="placeholderLabel"
                    text="Load image"
-                   styleClass="placeholder-label"/>
+                   style="-fx-text-fill: gray; -fx-font-size: 18px;"/>
         </StackPane>
     </center>
 
     <!-- Right: Filters -->
     <right>
-        <ScrollPane fitToWidth="true" styleClass="filters-scroll">
-            <VBox spacing="10" styleClass="filters-box">
+        <ScrollPane fitToWidth="true">
+            <VBox spacing="10">
                 <padding>
-                    <Insets top="10" right="10" bottom="10" left="10"/>
+                    <Insets top="10.0" right="10.0" bottom="10.0" left="10.0"/>
                 </padding>
 
-                <Label text="Filters" styleClass="filters-title"/>
+                <Label text="Filters" style="-fx-font-size: 16px;"/>
 
+                <!-- Grayscale -->
                 <CheckBox fx:id="grayCheckBox" text="Grayscale"/>
 
+                <!-- Heart -->
+                <CheckBox fx:id="heartCheckBox" text="Heart"/>
+
+                <!-- Rose -->
+                <CheckBox fx:id="roseCheckBox" text="Rose Blush"/>
+
+                <!-- Blur -->
                 <CheckBox fx:id="blurCheckBox" text="Blur"/>
-                <HBox spacing="5" styleClass="param-row">
+                <HBox spacing="5">
                     <Label text="Kernel"/>
-                    <TextField fx:id="blurKernelField" text="9"/>
+                    <TextField fx:id="blurKernelField" prefWidth="50" text="9"/>
                     <Label text="Sigma"/>
-                    <TextField fx:id="blurSigmaField" text="2.0"/>
+                    <TextField fx:id="blurSigmaField" prefWidth="50" text="2.0"/>
                 </HBox>
 
+                <!-- Edge -->
                 <CheckBox fx:id="edgeCheckBox" text="Edge"/>
-                <HBox spacing="5" styleClass="param-row">
+                <HBox spacing="5">
                     <Label text="Low"/>
-                    <TextField fx:id="edgeLowField" text="50"/>
+                    <TextField fx:id="edgeLowField" prefWidth="50" text="50"/>
                     <Label text="High"/>
-                    <TextField fx:id="edgeHighField" text="150"/>
+                    <TextField fx:id="edgeHighField" prefWidth="50" text="150"/>
                 </HBox>
 
+                <!-- Rainbow -->
                 <CheckBox fx:id="rainbowCheckBox" text="Rainbow"/>
                 <ChoiceBox fx:id="rainbowDirectionChoice"/>
+
+                <!-- Single Colour -->
+                <Separator/>
+                <Label text="Single Colour Filter" style="-fx-font-size: 14px;"/>
+                <CheckBox fx:id="singleColourCheckBox" text="Apply Single Colour"/>
+                <ColorPicker fx:id="singleColourPicker"/>
             </VBox>
         </ScrollPane>
     </right>

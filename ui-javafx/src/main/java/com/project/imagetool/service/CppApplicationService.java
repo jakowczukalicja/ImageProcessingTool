@@ -33,12 +33,27 @@ public class CppApplicationService {
 
         Process process = pb.start();
 
-        try(BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream())))
-        {
-            reader.lines().forEach(System.out::println);
-        }
+        Thread outputReader = new Thread(() -> {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    System.out.println(line);
+                }
+            } catch (IOException e) {
+                System.err.println("Error reading process output: " + e.getMessage());
+            }
+        });
+        outputReader.setDaemon(true);
+        outputReader.start();
 
         int exitCode = process.waitFor();
+        
+        try {
+            outputReader.join(1000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
         if (exitCode != 0) {
             throw new RuntimeException("C++ app failed with code " + exitCode);
         }

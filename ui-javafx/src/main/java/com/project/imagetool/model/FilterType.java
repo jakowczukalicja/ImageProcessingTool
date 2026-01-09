@@ -5,7 +5,7 @@ public enum FilterType {
     BLUR,
     EDGE,
     ROSE,
-    PINK,
+    SINGLE_COLOR,
     RAINBOW,
     HEART
 }
