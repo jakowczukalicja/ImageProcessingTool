@@ -16,6 +16,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import javafx.scene.layout.VBox;
+import javafx.application.Platform;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import com.project.imagetool.util.InputFormatters;
 import com.project.imagetool.util.ValidationUtil;
 
@@ -67,16 +70,43 @@ public class MainController {
                 logsToggleButton.setText(show ? "Hide Logs" : "Show Logs");
             });
 
-        // Attach numeric formatters
-        try {
-            blurKernelField.setTextFormatter(InputFormatters.createIntegerFormatter());
-            blurSigmaField.setTextFormatter(InputFormatters.createDecimalFormatter());
-            edgeLowField.setTextFormatter(InputFormatters.createDecimalFormatter());
-            edgeHighField.setTextFormatter(InputFormatters.createDecimalFormatter());
-        } catch (Exception ex) {
-            // ignore formatter setup failures
+            // Attach numeric formatters
+            try {
+                blurKernelField.setTextFormatter(InputFormatters.createIntegerFormatter());
+                blurSigmaField.setTextFormatter(InputFormatters.createDecimalFormatter());
+                edgeLowField.setTextFormatter(InputFormatters.createDecimalFormatter());
+                edgeHighField.setTextFormatter(InputFormatters.createDecimalFormatter());
+            } catch (Exception ex) {
+                // ignore formatter setup failures
+            }
         }
+
+        // Ensure process button is enabled only when at least one filter is selected
+        CheckBox[] filterBoxes = new CheckBox[] {
+                grayCheckBox, heartCheckBox, roseCheckBox,
+                blurCheckBox, edgeCheckBox, rainbowCheckBox, singleColourCheckBox
+        };
+
+        for (CheckBox cb : filterBoxes) {
+            if (cb != null) {
+                cb.selectedProperty().addListener((obs, oldV, newV) -> updateProcessButtonState());
+            }
         }
+
+        // Set initial state
+        updateProcessButtonState();
+    }
+
+    private void updateProcessButtonState() {
+        if (processBtn == null) return;
+        boolean anySelected = (grayCheckBox != null && grayCheckBox.isSelected())
+                || (heartCheckBox != null && heartCheckBox.isSelected())
+                || (roseCheckBox != null && roseCheckBox.isSelected())
+                || (blurCheckBox != null && blurCheckBox.isSelected())
+                || (edgeCheckBox != null && edgeCheckBox.isSelected())
+                || (rainbowCheckBox != null && rainbowCheckBox.isSelected())
+                || (singleColourCheckBox != null && singleColourCheckBox.isSelected());
+        processBtn.setDisable(!anySelected);
     }
 
     @FXML
@@ -227,11 +257,36 @@ public class MainController {
                 }
             });
 
-            // Handle errors
+            // Handle errors: log to UI, clean up temp files and re-enable UI so user can try again
             processTask.setOnFailed(e -> {
                 Throwable exception = processTask.getException();
-                showError("Processing failed:\n" + exception.getMessage());
-                exception.printStackTrace();
+
+                StringWriter sw = new StringWriter();
+                exception.printStackTrace(new PrintWriter(sw));
+                String trace = sw.toString();
+
+                if (logTextArea != null) {
+                    logTextArea.appendText("Processing failed: " + exception.getMessage() + System.lineSeparator());
+                    appendNewLogLines();
+                    logTextArea.positionCaret(logTextArea.getLength());
+                } else {
+                    System.err.println("Processing failed: " + exception.getMessage());
+                    exception.printStackTrace();
+                }
+
+                // Also display a user-facing alert with a short message
+                Platform.runLater(() -> showError("Processing failed:\n" + exception.getMessage()));
+
+                // Attempt to remove the temporary output file created for this run so future runs don't reuse a corrupted file
+                try {
+                    if (tempOutputImage != null && Files.exists(tempOutputImage)) {
+                        try { Files.delete(tempOutputImage); } catch (Exception ignore) {}
+                    }
+                } catch (Exception ignore) {}
+                tempOutputImage = null;
+
+                // Re-enable process button so user can try again
+                if (processBtn != null) processBtn.setDisable(false);
             });
 
             // Start the background task
