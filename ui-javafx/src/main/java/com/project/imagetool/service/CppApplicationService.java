@@ -24,6 +24,7 @@ public class CppApplicationService {
         command.add(job.getInputPath().toString());
         command.add(job.getOutputPath().toString());
 
+        // Polymorphism
         for(ImageFilter filter : job.getFilters()) {
             command.addAll(filter.toCliArgs());
         }
@@ -32,6 +33,11 @@ public class CppApplicationService {
         pb.redirectErrorStream(true);
 
         Process process = pb.start();
+
+        // Close the process stdin immediately since we don't write to it
+        try {
+            process.getOutputStream().close();
+        } catch (IOException ignore) {}
 
         Thread outputReader = new Thread(() -> {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
@@ -49,7 +55,7 @@ public class CppApplicationService {
         int exitCode = process.waitFor();
         
         try {
-            outputReader.join(1000);
+            outputReader.join();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }

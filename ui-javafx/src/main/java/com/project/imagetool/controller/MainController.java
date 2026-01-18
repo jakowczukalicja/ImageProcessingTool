@@ -14,11 +14,13 @@ import javafx.stage.FileChooser;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 import javafx.scene.layout.VBox;
 import javafx.application.Platform;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.io.IOException;
+import com.project.imagetool.service.LogManager;
+import com.project.imagetool.service.TempFileManager;
 import com.project.imagetool.util.InputFormatters;
 import com.project.imagetool.util.ValidationUtil;
 
@@ -50,8 +52,7 @@ public class MainController {
     @FXML private TextArea logTextArea;
 
     private File inputImage;
-    private Path tempOutputImage;
-    private Path prevOutputImage;
+    private final TempFileManager tempFileManager = new TempFileManager();
 
     @FXML
     public void initialize() {
@@ -95,6 +96,15 @@ public class MainController {
 
         // Set initial state
         updateProcessButtonState();
+
+        // Register shutdown hook to clean up temporary files when the JVM exits - destructor
+        try {
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                try {
+                    tempFileManager.cleanupAll();
+                } catch (Exception ignore) {}
+            }));
+        } catch (Exception ignore) {}
     }
 
     private void updateProcessButtonState() {
@@ -118,7 +128,8 @@ public class MainController {
         inputImage = chooser.showOpenDialog(null);
 
         if (inputImage != null) {
-            tempOutputImage = null;
+            // discard any previous temp output when loading a new image
+            try { tempFileManager.deleteTempOutput(); } catch (Exception ignore) {}
             imageView.setImage(new Image(inputImage.toURI().toString()));
             placeholderLabel.setVisible(false);
         }
@@ -134,8 +145,8 @@ public class MainController {
         processBtn.setDisable(true);
         
         try {
-            Path inputPath = (tempOutputImage != null && Files.exists(tempOutputImage))
-                    ? tempOutputImage
+                Path inputPath = (tempFileManager.getTempOutputImage() != null && Files.exists(tempFileManager.getTempOutputImage()))
+                    ? tempFileManager.getTempOutputImage()
                     : inputImage.toPath();
 
             // validate parameters before creating temp files
@@ -152,35 +163,30 @@ public class MainController {
                 return;
             }
 
-            try {
-                // delete any older prev copy
-                if (prevOutputImage != null && Files.exists(prevOutputImage)) {
-                    try { Files.delete(prevOutputImage); } catch (Exception ignore) {}
-                    prevOutputImage = null;
+                // prepare previous output: if there's a temp output, create prev from it, otherwise from the original input
+                try {
+                    if (tempFileManager.getPrevOutputImage() != null && Files.exists(tempFileManager.getPrevOutputImage())) {
+                        try { Files.delete(tempFileManager.getPrevOutputImage()); } catch (Exception ignore) {}
+                    }
+
+                    if (tempFileManager.getTempOutputImage() != null && Files.exists(tempFileManager.getTempOutputImage())) {
+                        tempFileManager.createPrevFrom(tempFileManager.getTempOutputImage());
+                        if (revertImageBtn != null) revertImageBtn.setDisable(false);
+                    } else if (inputImage != null) {
+                        tempFileManager.createPrevFrom(inputImage.toPath());
+                        if (revertImageBtn != null) revertImageBtn.setDisable(false);
+                    }
+                } catch (Exception ex) {
+                    System.err.println("Could not create prev temp output: " + ex.getMessage());
                 }
 
-                if (tempOutputImage != null && Files.exists(tempOutputImage)) {
-                    prevOutputImage = Files.createTempFile("imgtool_prev_", ".png");
-                    Files.copy(tempOutputImage, prevOutputImage, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                    if (revertImageBtn != null) revertImageBtn.setDisable(false);
-                } else if (inputImage != null) {
-                    // copy original input image into prevOutputImage so revert restores original
-                    prevOutputImage = Files.createTempFile("imgtool_prev_", ".png");
-                    Files.copy(inputImage.toPath(), prevOutputImage, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                    if (revertImageBtn != null) revertImageBtn.setDisable(false);
-                }
-            } catch (Exception ex) {
-                System.err.println("Could not create prev temp output: " + ex.getMessage());
-                prevOutputImage = null;
-            }
+                Path oldOutput = tempFileManager.getTempOutputImage();
+                Path newTemp = tempFileManager.createTempOutput();
 
-            Path oldOutput = tempOutputImage;
-            tempOutputImage = Files.createTempFile("imgtool_", ".png");
-
-            ImageJob job = new ImageJob(
+                ImageJob job = new ImageJob(
                     inputPath,
-                    tempOutputImage
-            );
+                    newTemp
+                );
 
             if (grayCheckBox.isSelected()) {
                 job.addFilter(new GrayFilter());
@@ -238,18 +244,17 @@ public class MainController {
             processTask.setOnSucceeded(e -> {
                 try {
                     // Delete old temp file if it exists (from previous processing)
-                    if (oldOutput != null && Files.exists(oldOutput) && !oldOutput.equals(tempOutputImage)) {
+                    if (oldOutput != null && Files.exists(oldOutput) && !oldOutput.equals(tempFileManager.getTempOutputImage())) {
                         try {
                             Files.delete(oldOutput);
                         } catch (Exception deleteEx) {
                             System.err.println("Could not delete old temp file: " + deleteEx.getMessage());
                         }
                     }
-
                     // Load and display the new processed image
-                    imageView.setImage(new Image(tempOutputImage.toUri().toString()));
+                    imageView.setImage(new Image(tempFileManager.getTempOutputImage().toUri().toString()));
                     // Append any new log lines from processing_log.txt to the log view
-                    appendNewLogLines();
+                    LogManager.appendProcessingLog(logTextArea);
                     processBtn.setDisable(false);
                 } catch (Exception ex) {
                     showError("Failed to load processed image: " + ex.getMessage());
@@ -257,7 +262,7 @@ public class MainController {
                 }
             });
 
-            // Handle errors: log to UI, clean up temp files and re-enable UI so user can try again
+            // Handle errors: log to UI, clean up temp files and re-enable UI
             processTask.setOnFailed(e -> {
                 Throwable exception = processTask.getException();
 
@@ -267,25 +272,18 @@ public class MainController {
 
                 if (logTextArea != null) {
                     logTextArea.appendText("Processing failed: " + exception.getMessage() + System.lineSeparator());
-                    appendNewLogLines();
+                    LogManager.appendProcessingLog(logTextArea);
                     logTextArea.positionCaret(logTextArea.getLength());
                 } else {
                     System.err.println("Processing failed: " + exception.getMessage());
                     exception.printStackTrace();
                 }
 
-                // Also display a user-facing alert with a short message
                 Platform.runLater(() -> showError("Processing failed:\n" + exception.getMessage()));
 
                 // Attempt to remove the temporary output file created for this run so future runs don't reuse a corrupted file
-                try {
-                    if (tempOutputImage != null && Files.exists(tempOutputImage)) {
-                        try { Files.delete(tempOutputImage); } catch (Exception ignore) {}
-                    }
-                } catch (Exception ignore) {}
-                tempOutputImage = null;
+                try { tempFileManager.deleteTempOutput(); } catch (Exception ignore) {}
 
-                // Re-enable process button so user can try again
                 if (processBtn != null) processBtn.setDisable(false);
             });
 
@@ -302,7 +300,7 @@ public class MainController {
 
     @FXML
     private void onSave() {
-        if (tempOutputImage == null) {
+        if (tempFileManager.getTempOutputImage() == null) {
             showError("Nothing to save. Process image first.");
             return;
         }
@@ -316,7 +314,7 @@ public class MainController {
 
         if (target != null) {
             try {
-                Files.copy(tempOutputImage, target.toPath(),
+                Files.copy(tempFileManager.getTempOutputImage(), target.toPath(),
                         java.nio.file.StandardCopyOption.REPLACE_EXISTING);
             } catch (Exception e) {
                 showError("Failed to save file");
@@ -350,66 +348,18 @@ public class MainController {
         
         throw new RuntimeException("Could not find cpp/main executable. Searched from: " + currentDir.toAbsolutePath());
     }
-
-    private Path findProcessingLogFile() {
-        Path currentDir = Path.of(System.getProperty("user.dir"));
-        Path searchDir = currentDir;
-
-        for (int i = 0; i < 6; i++) {
-            Path p = searchDir.resolve("processing_log.txt");
-            if (Files.exists(p)) {
-                return p.toAbsolutePath();
-            }
-            Path parent = searchDir.getParent();
-            if (parent == null) break;
-            searchDir = parent;
-        }
-        return null;
-    }
-
-    private void appendNewLogLines() {
-        if (logTextArea == null) return;
-        try {
-            Path p = findProcessingLogFile();
-            if (p == null || !Files.exists(p)) return;
-
-            List<String> lines = Files.readAllLines(p);
-            if (!lines.isEmpty()) {
-                StringBuilder sb = new StringBuilder();
-                for (String l : lines) {
-                    String t = l == null ? "" : l.trim();
-                    if ("=== Logger started ===".equals(t) || "=== Logger ended ===".equals(t)) continue;
-                    sb.append(l).append(System.lineSeparator());
-                }
-                logTextArea.appendText(sb.toString());
-            }
-            logTextArea.positionCaret(logTextArea.getLength());
-
-        } catch (Exception ex) {
-            System.err.println("Failed to append processing log lines: " + ex.getMessage());
-        }
-    }
+    
 
     @FXML
     private void onRevertImage() {
-        if (prevOutputImage == null || !Files.exists(prevOutputImage)) return;
+        if (tempFileManager.getPrevOutputImage() == null || !Files.exists(tempFileManager.getPrevOutputImage())) return;
         try {
-            // delete current temp output if exists
-            if (tempOutputImage != null && Files.exists(tempOutputImage)) {
-                try { Files.delete(tempOutputImage); } catch (Exception ignore) {}
-            }
-            Path restored = Files.createTempFile("imgtool_restored_", ".png");
-            Files.copy(prevOutputImage, restored, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-            // set restored as current tempOutputImage
-            tempOutputImage = restored;
-            // delete prev and clear
-            try { Files.delete(prevOutputImage); } catch (Exception ignore) {}
-            prevOutputImage = null;
+            Path restored = tempFileManager.restorePrevToTemp();
             if (revertImageBtn != null) revertImageBtn.setDisable(true);
 
             // load into UI
-            imageView.setImage(new Image(tempOutputImage.toUri().toString()));
-        } catch (Exception ex) {
+            if (restored != null) imageView.setImage(new Image(restored.toUri().toString()));
+        } catch (IOException ex) {
             System.err.println("Failed to revert image: " + ex.getMessage());
         }
     }
